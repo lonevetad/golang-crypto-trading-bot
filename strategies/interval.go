@@ -41,6 +41,8 @@ func (is IntervalStrategy) String() string {
 // Apply executes Cyclically the On Update, basing on provided interval.
 func (is IntervalStrategy) Apply(wrappers []exchanges.ExchangeWrapper, markets []*environment.Market) {
 	var err error
+	var delta time.Duration
+	var timeBefore time.Time
 	if is.Model.Setup != nil {
 		err = is.Model.Setup(wrappers, markets)
 		if err != nil && is.Model.OnError != nil {
@@ -48,11 +50,16 @@ func (is IntervalStrategy) Apply(wrappers []exchanges.ExchangeWrapper, markets [
 		}
 	}
 	for err == nil {
+		howMuchToSleep = time.Now()
 		err = is.Model.OnUpdate(wrappers, markets)
 		if err != nil && is.Model.OnError != nil {
 			is.Model.OnError(err)
 		}
-		time.Sleep(is.Interval)
+		howMuchToSleep = time.Now().Sub(timeBefore) - is.Interval //it's in time.Duration
+
+		if(howMuchToSleep > 0){
+			time.Sleep(howMuchToSleep)
+		}
 	}
 	if is.Model.TearDown != nil {
 		err = is.Model.TearDown(wrappers, markets)
